@@ -1,0 +1,125 @@
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+const matches = [
+  { teams: "Brasil de Pelotas x Juventude", odds: [4.50, 3.50, 1.70] },
+  { teams: "Ypiranga - RS x Cascavel", odds: [2.20, 3.10, 3.40] },
+  { teams: "Aimoré x Internacional", odds: [5.00, 3.80, 1.50] },
+  { teams: "Joinville x Avaí", odds: [3.20, 3.00, 2.10] },
+  { teams: "Maringá x Tombense", odds: [1.80, 3.40, 4.30] },
+  { teams: "Santa Cruz x Botafogo", odds: [2.30, 3.10, 3.00] },
+  { teams: "Grêmio x Remo", odds: [1.60, 3.50, 5.20] },
+  { teams: "Santos x Bahia", odds: [1.40, 4.00, 6.00] },
+];
+
+export default function BettingApp() {
+  const [bets, setBets] = useState({});
+  const [balance, setBalance] = useState(100);
+  const [results, setResults] = useState(matches.map(() => null));
+  const [winners, setWinners] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [password, setPassword] = useState("");
+
+  const placeBet = (matchIndex, option, amount) => {
+    if (amount > balance || amount <= 0) return;
+    setBets({ ...bets, [matchIndex]: { option, amount } });
+    setBalance(balance - amount);
+  };
+
+  const setMatchResult = (matchIndex, result) => {
+    if (!isAdmin) return;
+    const newResults = [...results];
+    newResults[matchIndex] = result;
+    setResults(newResults);
+    calculateWinners(newResults);
+  };
+
+  const calculateWinners = (finalResults) => {
+    let newBalance = balance;
+    let winnersList = [];
+    Object.entries(bets).forEach(([matchIndex, bet]) => {
+      const matchIdx = parseInt(matchIndex);
+      if (finalResults[matchIdx] !== null && bet.option === finalResults[matchIdx]) {
+        const winnings = bet.amount * matches[matchIdx].odds[bet.option];
+        newBalance += winnings;
+        winnersList.push(matches[matchIdx].teams);
+      }
+    });
+    setBalance(newBalance);
+    setWinners(winnersList);
+  };
+
+  const handleLogin = () => {
+    if (password === "admin123") {
+      setIsAdmin(true);
+    }
+  };
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Aposte nos Jogos!</h1>
+      <p>Saldo: R${balance.toFixed(2)}</p>
+      {!isAdmin && (
+        <div className="mb-4">
+          <Input
+            type="password"
+            placeholder="Senha do Admin"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="mr-2"
+          />
+          <Button onClick={handleLogin}>Entrar como Admin</Button>
+        </div>
+      )}
+      {matches.map((match, index) => (
+        <Card key={index} className="mb-4 p-4">
+          <CardContent>
+            <h2 className="text-lg font-semibold">{match.teams}</h2>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              {match.odds.map((odd, optionIndex) => (
+                <div key={optionIndex} className="flex flex-col items-center">
+                  <span className="text-sm">Odd: {odd.toFixed(2)}</span>
+                  <Input
+                    type="number"
+                    placeholder="Valor"
+                    className="w-20 text-center mt-1"
+                    onChange={(e) => placeBet(index, optionIndex, parseFloat(e.target.value))}
+                  />
+                  <Button className="mt-2" onClick={() => placeBet(index, optionIndex, 10)}>
+                    Apostar R$10
+                  </Button>
+                </div>
+              ))}
+            </div>
+            {isAdmin && (
+              <div className="mt-4">
+                <span className="text-sm">Definir Resultado:</span>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {match.odds.map((_, optionIndex) => (
+                    <Button key={optionIndex} onClick={() => setMatchResult(index, optionIndex)}>
+                      {optionIndex === 0 ? "Time 1" : optionIndex === 1 ? "Empate" : "Time 2"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+      <div className="mt-6">
+        <h2 className="text-xl font-bold">Ganhadores:</h2>
+        {winners.length > 0 ? (
+          <ul>
+            {winners.map((winner, index) => (
+              <li key={index}>{winner}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>Ninguém ganhou ainda.</p>
+        )}
+      </div>
+    </div>
+  );
+}
